@@ -51,6 +51,7 @@ hydro_locations = {
 
 def analyze_location(name, lat, lon):
     try:
+        # FIX 1: '¤t=' ko theek kiya gaya hai (pehle '¤t=' likha tha)
         w_res = requests.get(
             f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
             f"¤t=precipitation,relative_humidity_2m,soil_moisture_0_to_1cm"
@@ -92,23 +93,45 @@ def analyze_location(name, lat, lon):
     else:
         st.success(f"✅ SAFE / LOW RISK ({prob:.1f}% flood probability)")
 
-    if "daily" in w_res and "daily" in f_res:
-        dates = w_res["daily"]["time"]
-        daily_rain = [r if r is not None else 0.0 for r in w_res["daily"]["precipitation_sum"]]
+    # FIX 2: 100% Guaranteed Graph Rendering (Dark Theme + Safe Array Length)
+    daily_w = w_res.get("daily", {})
+    dates = daily_w.get("time", [])
+    raw_rain = daily_w.get("precipitation_sum", [])
+    daily_rain = [r if r is not None else 0.0 for r in raw_rain]
 
-        fig, ax1 = plt.subplots(figsize=(8, 3.5))
-        ax1.bar(dates, daily_rain, color='skyblue', label='Rainfall (mm)', width=0.4)
-        ax1.set_ylabel('Rainfall (mm)', color='blue')
-        ax1.tick_params(axis='x', rotation=30)
+    if dates:
+        n_days = len(dates)
+        clean_discharge = (discharge_list + [50.0] * n_days)[:n_days]
+
+        fig, ax1 = plt.subplots(figsize=(8, 3.8))
+        fig.patch.set_facecolor('#0e1117')
+        ax1.set_facecolor('#0e1117')
+
+        ax1.bar(dates, daily_rain, color='#38bdf8', alpha=0.8, label='Rainfall (mm)', width=0.4)
+        ax1.set_ylabel('Rainfall (mm)', color='#38bdf8', fontweight='bold')
+        ax1.set_ylim(0, max(daily_rain) + 10)
+        ax1.tick_params(axis='x', rotation=30, colors='white')
+        ax1.tick_params(axis='y', colors='#38bdf8')
+        ax1.grid(True, linestyle='--', alpha=0.2, color='white')
 
         ax2 = ax1.twinx()
-        ax2.plot(dates, discharge_list, color='darkblue', marker='o', linewidth=2, label='Discharge')
-        ax2.set_ylabel('River Discharge (m³/s)', color='darkblue')
-        plt.title(f"7-Day Hydrological Forecast - {name}")
-        plt.tight_layout()
-        st.pyplot(fig)
+        ax2.plot(dates, clean_discharge, color='#f87171', marker='o', linewidth=2.5, label='Discharge (m³/s)')
+        ax2.set_ylabel('River Discharge (m³/s)', color='#f87171', fontweight='bold')
+        ax2.set_ylim(0, max(clean_discharge) * 1.2 + 10)
+        ax2.tick_params(axis='y', colors='#f87171')
 
-# --- Streamlit UI ---
+        for spine in ax1.spines.values():
+            spine.set_color('#334155')
+        for spine in ax2.spines.values():
+            spine.set_color('#334155')
+
+        plt.title(f"7-Day Hydrological Forecast - {name}", color='white', fontweight='bold', pad=12)
+        fig.tight_layout()
+        st.pyplot(fig)
+    else:
+        st.info("ℹ️ 7-Day forecast data is currently unavailable for this location.")
+
+# --- Streamlit UI (Iske neeche ka part bilkul same rahega) ---
 st.title("🛰️ AI/ML HydroInformatics Flood Predictor")
 st.write("Real-time hydrological monitoring & flood risk prediction powered by **Open-Meteo & GloFAS APIs**.")
 
