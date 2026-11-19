@@ -51,16 +51,29 @@ hydro_locations = {
 
 def analyze_location(name, lat, lon):
     try:
-        # FIX 1: '¤t=' ko theek kiya gaya hai (pehle '¤t=' likha tha)
+        # Safe params dictionary (Kabhi bhi & symbol corrupt nahi hoga)
         w_res = requests.get(
-            f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}"
-            f"¤t=precipitation,relative_humidity_2m,soil_moisture_0_to_1cm"
-            f"&daily=precipitation_sum&forecast_days=7&timezone=auto", timeout=5
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "current": "precipitation,relative_humidity_2m,soil_moisture_0_to_1cm",
+                "daily": "precipitation_sum",
+                "forecast_days": 7,
+                "timezone": "auto"
+            },
+            timeout=5
         ).json()
 
         f_res = requests.get(
-            f"https://flood-api.open-meteo.com/v1/flood?latitude={lat}&longitude={lon}"
-            f"&daily=river_discharge&forecast_days=7", timeout=5
+            "https://flood-api.open-meteo.com/v1/flood",
+            params={
+                "latitude": lat,
+                "longitude": lon,
+                "daily": "river_discharge",
+                "forecast_days": 7
+            },
+            timeout=5
         ).json()
     except Exception as e:
         st.error(f"❌ Network/API Error: {e}")
